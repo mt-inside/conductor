@@ -1,0 +1,31 @@
+digraph instance
+{
+    NotRunning
+    // How know? Health checks tell us about it being active but not just
+    // existing. I think: VIM is async, messages when creation has been
+    // confirmed. After that, it doens't matter. If health tests fail it doesnt
+    // matter if it's an app-level thing or a vaporised VM, response is the
+    // same.
+    Running //Not in service discovery.
+    Active
+    Maintanence //No autoscale. Isn't this a cluster property? Do we want to expose / address clusers? (path will be peri/1/ssc/1. ssc is cluster). This is OK - the Instance(file) causes the *cluster* not the instance(actor), so it's an op in instance.
+    Quiescent //Not in service discovery
+    Quarentine
+    // plus error?
+    Terminated
+
+    NotRequested -> NotRunning
+    NotRunning -> Running
+    //NotRunning -> Active - if all the checks pass then either its alive and the vim is mis-communicating, or they're someone else's tests
+    Running -> Active
+    Running -> Quarentine // Didn't go active in time, quarentine
+    Running -> NotRunning // Didn't go active in time, no quarentine
+    Active -> Maintanence
+    Active -> NotRunning // Replace
+    Active -> Running // Restart-in-place
+    Active -> Quarentine // Died, Quarentine
+    Maintanence -> Active
+    Active -> Quiescent
+    Quiescent -> Terminated
+    Active -> Terminated
+}

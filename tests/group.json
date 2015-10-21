@@ -1,0 +1,11 @@
+{
+    "name": "web_service",
+    "activeMin": 1,
+    "targetMin": 1,
+    "targetMax": 1,
+    "target": "auto",
+    "placementPolicy": "none",
+    "children": [ "front_end", "worker", "database" ],
+    "dependencies": { "front_end": "worker", "worker": "database" },
+    "restartStyle": "dependents"
+}

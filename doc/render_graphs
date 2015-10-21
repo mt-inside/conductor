@@ -1,0 +1,5 @@
+#!/bin/bash
+for g in *dot
+do
+    dot -Tsvg "$g" > "${g%%.dot}.svg"
+done

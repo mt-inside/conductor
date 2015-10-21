@@ -1,0 +1,39 @@
+digraph monitors
+{
+    deployment_east [label="Deployer"]
+    cluster_perimeta [label="cluster-perimeta"]
+    instance_perimeta_1 [label="instance-1"]
+    stats_ssc [label="stats-ssc"]
+    stats_msc [label="stats-msc"]
+    cluster_ssc [label="cluster-ssc"]
+    cluster_msc [label="cluster-msc"]
+    instance_ssc_1 [label="instance-1"]
+    stats_ssc_cpu [label="stats-cpu"]
+    stats_ssc_latency [label="stats-latency"]
+    liveness_ssc_1_ping [label="liveness-ping"]
+    liveness_ssc_1_pgrep [label="liveness-pgrep"]
+    stat_ssc_1_cpu [label="stat-cpu"]
+    stat_ssc_1_latency [label="stat-latency"]
+
+    cluster_perimeta -> deployment_east [label="Eä",color="grey",dir="back"]
+    deployment_east -> cluster_perimeta [label="Liveness",color="grey",dir="back"]
+    deployment_east -> cluster_perimeta [label="Target (normalised)?",color="grey",dir="back"]
+    cluster_perimeta -> stats_ssc [label="Target",color="grey",dir="back"]
+    cluster_perimeta -> stats_msc [label="Target",color="grey",dir="back"]
+    cluster_perimeta -> instance_perimeta_1 [label="Liveness",color="grey",dir="back"]
+    instance_perimeta_1 -> cluster_ssc [label="Liveness",color="grey",dir="back"]
+    instance_perimeta_1 -> cluster_msc [label="Liveness",color="grey",dir="back"]
+
+    stats_ssc -> cluster_ssc [label="Target (normalised)",color="grey",dir="back"]
+
+    cluster_ssc -> stats_ssc_cpu [label="Target",color="grey",dir="back"]
+    cluster_ssc -> stats_ssc_latency [label="Target",color="grey",dir="back"]
+    cluster_ssc -> instance_ssc_1 [label="Liveness",color="grey",dir="back"]
+    instance_ssc_1 -> liveness_ssc_1_ping [label="Liveness",color="grey",dir="back"]
+    instance_ssc_1 -> liveness_ssc_1_pgrep [label="Liveness",color="grey",dir="back"]
+    instance_ssc_1 -> stat_ssc_1_cpu [dir="back"]
+    instance_ssc_1 -> stat_ssc_1_latency [dir="back"]
+
+    stats_ssc_cpu -> stat_ssc_1_cpu [label="Target (normalised moving avg)",color="grey",dir="back"]
+    stats_ssc_latency -> stat_ssc_1_latency [label="Target (normalised moving avg)",color="grey",dir="back"]
+}

@@ -1,0 +1,18 @@
+{
+    "name": "database",
+    "activeMin": 1,
+    "targetMin": 2,
+    "targetMax": 2,
+    "target": "auto",
+    "placementPolicy": "dislocate",
+    "image": "oracle10g",
+    "flavour": "large",
+    "networks": [ "mgmt", "internal" ],
+    "recoverType": "restart",
+    "replaceTiming": "serial",
+    "quarantine": true,
+    "bootTimeMax": 300,
+    "livenessChecks": [ "consul", "ping" ],
+    "loadStats": [ "latency", "ram" ],
+    "loadTargets": [ 50.0, 800 ]
+}

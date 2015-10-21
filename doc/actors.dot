@@ -1,0 +1,31 @@
+digraph actors
+{
+    {
+        rank=same
+        Monitors [label="Montiors / Deployer"]
+        RestView
+        Confirmer
+        Vim
+    }
+
+    RestView -> user [color=black]
+    Stores -> user [color=black]
+    Monitors -> user [color=black]
+    Confirmer -> user [color=black]
+    Vim -> user [color=black]
+    UserEventLogger -> user [color=black]
+
+    Deployment-> Stores [color=black]
+    Instance-> Stores [color=black]
+    Group-> Stores [color=black]
+
+    cluster_perimeta -> Monitors [color=black]
+    cluster_vpc -> Monitors [color=black]
+    
+    /* TODO: who does the validation / compilation of this? Shouldn't be the
+     * store; something should check. Open question as to whether that thing also
+     * asks for the deployment (assuming the save has gone ok), or whether the store
+     * does it on successful saving (preferred), because of the implication that
+     * it's been checked and is OK. */
+    Deployment -> Monitors [color=grey, label="New Deployment"]
+}
