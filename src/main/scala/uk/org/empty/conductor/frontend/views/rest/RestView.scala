@@ -87,6 +87,12 @@ trait RestViewService extends HttpService with Json4sSupport
 
   val routes =
     pathPrefix("v1") {
+      // FIXME: because "Definition" store is shared between Instance and Group,
+      // both list operations return both types. Fix is to extend store class
+      // for Definition and add methods to get just one or the other? But how to
+      // call from here? Maybe split the stores, and have controller logic that
+      // knows to check both when looking for definitions (e.g. reading,
+      // checking for dup names before adding, etc)
       pathPrefix("instance")   { crudRoutes[Instance]("Definition") } ~
       pathPrefix("group")      { crudRoutes[Group]("Definition") } ~
       pathPrefix("deployment") { crudRoutes[Deployment]("Deployment") }
