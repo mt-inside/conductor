@@ -1,6 +1,6 @@
 conductor:
     build: .
-    dockerfile: Dockerfile.composer.dev
+    dockerfile: Dockerfile.conductor
     volumes:
         - .:/src
         - ~/.ivy2:/root/.ivy2 # Share ivy2 cache with host to greatly speed things up
