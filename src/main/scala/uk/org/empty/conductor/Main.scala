@@ -38,7 +38,7 @@ object Main extends App with LazyLogging
 
   /* JSON/REST interface */
   val restView = system.actorOf(RestView.props, "RestView")
-  val rHost = Try(conf.getString("restApi.host")).getOrElse("localhost")
+  val rHost = Try(conf.getString("restApi.host")).getOrElse("0.0.0.0")
   val rPort = Try(conf.getInt("restApi.port")).getOrElse(1337)
   (IO(Http) ? Http.Bind(restView, rHost, rPort))
     .mapTo[Http.Event]
@@ -55,7 +55,7 @@ object Main extends App with LazyLogging
   /* Long-polling confirmer */
   val confirmer = system.actorOf(YesConfirmer.props, "Confirmer")
   /*val confirmer = system.actorOf(Confirmer.props(stores), "Confirmer")
-  val cHost = Try(conf.getString("confirmer.host")).getOrElse("localhost")
+  val cHost = Try(conf.getString("confirmer.host")).getOrElse("0.0.0.0")
   val cPort = Try(conf.getInt("confirmer.port")).getOrElse(1338)
   (IO(Http) ? Http.Bind(confirmer, cHost, cPort))
     .mapTo[Http.Event]
