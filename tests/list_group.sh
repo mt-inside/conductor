@@ -1,0 +1,1 @@
+exec ./list.sh group
