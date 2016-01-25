@@ -1,0 +1,30 @@
+conductor:
+    build: .
+    dockerfile: Dockerfile.composer.dev
+    volumes:
+        - .:/src
+        - ~/.ivy2:/root/.ivy2 # Share ivy2 cache with host to greatly speed things up
+    ports:
+        - 1337:1337
+    links:
+        - consul:dns
+        - consul:consul
+        - influx:influx
+
+# One for now because docker-compose's doesn't support minimum scale
+consul:
+    image: progrium/consul
+    command: -server -bootstrap
+    ports:
+        - 8400:8400
+        - 8500:8500
+
+# One for now because docker-compose's doesn't support minimum scale
+influx:
+    image: tutum/influxdb
+    ports:
+        - 8083:8083
+        - 8086:8086
+    environment:
+        # First time only?
+        - PRE_CREATE_DB=conductor
