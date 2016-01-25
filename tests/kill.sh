@@ -1,2 +1,4 @@
-curl -v -X POST http://127.0.0.1:1337/test/die
+source test_config.sh
+
+curl -v -X POST http://${CONDUCTOR_HOST}:1337/test/die
 echo
