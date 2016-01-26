@@ -47,7 +47,7 @@ object Main extends App with LazyLogging
         logger.info(s"REST interface bound to $addr")
       case Http.CommandFailed(cmd) =>
         logger.error(s"REST interface could not bind to $rHost:$rPort; ${cmd.failureMessage}")
-        system.shutdown
+        system.terminate
     }
 
   //TODO: factor out into confirmer factory method which will return this or

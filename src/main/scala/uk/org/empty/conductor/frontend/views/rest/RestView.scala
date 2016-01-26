@@ -1,6 +1,6 @@
 package uk.org.empty.conductor.frontend.view.rest
 
-import akka.actor.{Actor, Props, ActorSelection}
+import akka.actor.{Actor, ActorLogging, Props, ActorSelection}
 
 import akka.pattern.ask
 import akka.util.Timeout
@@ -109,12 +109,12 @@ object RestView
   def props = Props[RestView]
 }
 
-class RestView extends Actor with RestViewService
+class RestView extends Actor with ActorLogging with RestViewService
 {
   def actorRefFactory = context
 
   def getStore(s: String) = context.actorSelection("/user/Stores/" + s)
-  def die = context.system.shutdown
+  def die = { log.warning("Killed by user!"); context.system.terminate }
 
   /* Define the routes using spray-routing's DSL and let spray "run" them.
    * Seems to use this actor as a dispatcher and handle the actual requests on

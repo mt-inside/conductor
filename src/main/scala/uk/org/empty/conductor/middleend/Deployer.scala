@@ -68,7 +68,7 @@ class Deployer extends Actor with ActorLogging
       // TDDO: the fact this is an actorFor (can;t stop an actorSeletion) really
       // indicates that we should have a map of child names to actors - this
       // will be a recurring pattern down the hierarchy.
-      context.stop(context.actorFor(s"cluster-${name}"))
+      context.actorSelection(s"cluster-${name}") ! monitor.MonitorProtocol.Stop
     }
 
     case _ => log.error("wft")

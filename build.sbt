@@ -9,8 +9,8 @@ mainClass in Compile := Some("uk.org.empty.conductor.Main")
 /* Production dependencies */
 libraryDependencies ++= Seq(
   // Akka
-  "com.typesafe.akka" %% "akka-actor" % "2.3.+",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.+", // akka logging handler that uses slf4j
+  "com.typesafe.akka" %% "akka-actor" % "2.4.+",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.4.+", // akka logging handler that uses slf4j
 
   // Logging
   "ch.qos.logback" % "logback-classic" % "1.1.+", // slf4j implementation
