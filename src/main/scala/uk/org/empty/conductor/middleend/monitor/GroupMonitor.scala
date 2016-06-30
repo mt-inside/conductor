@@ -61,7 +61,7 @@ class GroupMonitor(g: Group, instanceId: Int) extends LoggingFSM[GroupMonitor.St
   }
 
   /* Start the (clusters of) children */
-  val checks = g.children.map { c => (c -> context.actorOf(Cluster.props(getDefn(c)), s"cluster-$c")) }.toMap
+  val checks = g.children.map { c => (c -> context.actorOf(ClusterMonitor.props(getDefn(c)), s"cluster-$c")) }.toMap
   // Stats collection is not managed by this actor; the Cluster will have started StatsAggregators as our siblings.
 
   /* Populate initial set of liveness values */
@@ -97,6 +97,16 @@ class GroupMonitor(g: Group, instanceId: Int) extends LoggingFSM[GroupMonitor.St
         goto(Inactive) using newState
       else
         stay using newState
+    }
+  }
+
+
+  whenUnhandled
+  {
+    case Event(Stop, s: Children) =>
+    {
+      s.checks.values.foreach{ c => c ! Stop }
+      stay // Above is a graceful stop message so we don't just declare ourself Inactive yet, but wait for that to propage up from the instances.
     }
   }
 

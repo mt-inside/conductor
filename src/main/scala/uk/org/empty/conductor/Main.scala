@@ -78,5 +78,6 @@ object Main extends App with LazyLogging
 
   /* == BACK END == */
 
-  val vim = system.actorOf(FakeVim.props, "Vim")
+  val vim = system.actorOf(DockerVim.props("192.168.99.1:2376"), "Vim")
+  //192.168.99.100:2376
 }

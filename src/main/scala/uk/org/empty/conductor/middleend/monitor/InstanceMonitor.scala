@@ -20,6 +20,11 @@ import uk.org.empty.conductor.backend.vim.VimProtocol
  * - rather, should probably factor targets and livenesses out and have this
  * thing's state be just: id,alive? Persist that and pick it back up when we
  * restart.
+ *
+ * TODO: impliment the Instance model flags e.g. restart serial/parallel (might
+ * reuse Sroping state with an intent field in the data to tell it what to do
+ * when the machine stops - either kill self or back to starting. Or probably
+ * have another state to make it more obiouvlss
  */
 object InstanceMonitor
 {
@@ -28,23 +33,31 @@ object InstanceMonitor
 
   /* Received and Sent events */
   // MonitorProtocol._
+  // - final case class ScaleTarget(instances: Double)
+  // - final case class Liveness(ok: Boolean)
+  // - final case object Stop
+  // - final case object Stopped
+  // VimProtocol._
+  // - final case class MachineStarted(id: String)
+  // - final case class MachineStopped(id: String)
 
   /* States */
   sealed trait State
   case object NotRequested extends State
-  case object NotRunning extends State
+  case object Starting extends State
   case object Running extends State
   case object Active extends State
   case object Maintanence extends State
-  case object Quiescent extends State
-  case object Quarentine extends State
-  case object Terminated extends State
+  case object Quiescing extends State
+  case object Stopping extends State
 
   /* Data */
   sealed trait Data
-  /* Should really have a NoMachine class for the inital state but cba with the C/P */
+  /* Should really have a NoMachine class for the inital state but cba with the C/P
+   * TODO: but seriously, do, because we're just calling Option::get, which is
+   * basically using a null */
   final case class Machine(
-    id: String, /* Don't use UUID so as to be IaaS/VIM-agnostic */
+    id: Option[String], /* Don't use UUID so as to be IaaS/VIM-agnostic */
     /* Own */
     checks: Map[String, ActorRef], // Liveness Checkers
     stats: Map[String, ActorRef],
@@ -59,6 +72,8 @@ class InstanceMonitor(i: Instance, instanceId: Int) extends LoggingFSM[InstanceM
   import InstanceMonitor._
   import MonitorProtocol._
 
+  val instanceName = i.name + "-" + instanceId
+
   /* Deps */
   val vim = context.actorSelection("/user/Vim")
 
@@ -70,19 +85,27 @@ class InstanceMonitor(i: Instance, instanceId: Int) extends LoggingFSM[InstanceM
   val livenesses = checks.map { c => (c._2 -> false) }.toMap
   // Fetchers do not report into this actor
 
-  startWith(NotRequested, Machine(null, checks, stats, livenesses))
+  startWith(NotRequested, Machine(None, checks, stats, livenesses))
 
 
   when(NotRequested, stateTimeout = 1.second)
   {
-    case Event(StateTimeout, _) => goto(NotRunning)
+    case Event(StateTimeout, _) => goto(Starting)
   }
 
-  when(NotRunning)
+  when(Starting)
   {
     case Event(VimProtocol.MachineStarted(newId), m: Machine) =>
     {
-      goto(Running) using m.copy(id=newId)
+      log.info(s"Instance ${instanceName} running with VIM ID ${newId}")
+      goto(Running) using m.copy(id=Some(newId))
+    }
+
+    // aka failed to start
+    case Event(VimProtocol.MachineStopped, m: Machine) =>
+    {
+      // Will trigger event and thus try again
+      goto(Starting)
     }
   }
 
@@ -105,9 +128,9 @@ class InstanceMonitor(i: Instance, instanceId: Int) extends LoggingFSM[InstanceM
     case Event(StateTimeout, m: Machine) =>
     {
       /* Stop the instance that failed to come up */
-      vim ! VimProtocol.StopMachine(m.id)
+      vim ! VimProtocol.StopMachine(m.id.get)
 
-      goto(NotRunning) using m.copy(id = null)
+      goto(Starting) using m.copy(id = None)
     }
   }
 
@@ -124,12 +147,12 @@ class InstanceMonitor(i: Instance, instanceId: Int) extends LoggingFSM[InstanceM
       }
       else
       {
-        vim ! VimProtocol.StopMachine(m.id)
+        vim ! VimProtocol.StopMachine(m.id.get)
         // TODO: add support for "wait for termination" feature: new state
         // "waitfortermination" and go to that here. in that state, expect
         // MachineStopped and then start it. *really* looke like starting needs
         // factoring to a function, if not a state.
-        goto(NotRunning) using m.copy(id = null)
+        goto(Starting) using m.copy(id = None)
         ///git hash, build time in resource, print on start up
         //add vim ! RestartInPlace & goto running
         ///could transition into a NotRequested state and have the transition //into that start the vm (startWith does not show a transition into the //start state)
@@ -137,24 +160,85 @@ class InstanceMonitor(i: Instance, instanceId: Int) extends LoggingFSM[InstanceM
     }
   }
 
-
-  onTransition
+  when(Maintanence)
   {
-    /* Only matches the first one */
-    case _ -> NotRunning =>
-    {
-      context.system.eventStream.publish(UserEvent(s"Instance NotRunning ${i.name}"))
+    case _ => stay
+  }
 
+  when(Quiescing)
+  {
+    case _ => stay
+  }
+
+  when(Stopping)
+  {
+    case Event(VimProtocol.MachineStopped, m: Machine) =>
+    {
+      context.parent ! Stopped
+      // Kill self
+      stop(FSM.Normal)
+    }
+  }
+
+
+  whenUnhandled
+  {
+    // Can happen in any state
+    case Event(Stop, m: Machine) =>
+    {
+      // TODO can't assume we have an ID here (may still be starting, or even
+      // NotRequested. VimDriver has to be happy to accept StopMachine in any
+      // state, even when it's still starting it.
+      vim ! VimProtocol.StopMachine(m.id.get)
+      stop other children?
+      goto(Stopping)
+    }
+  }
+
+
+  /* Unlike the convenience method that takes a pfn but only runs the first
+   * match, this way of registering transition handlers allows us to handle
+   * multiple overlapping cases. */
+
+  onTransition(loggingHandler _)
+  def loggingHandler(from: InstanceMonitor.State, to: InstanceMonitor.State) =
+  {
+    if(to == Starting)
+    {
+      context.system.eventStream.publish(UserEvent(s"Instance Starting ${instanceName}"))
+    }
+    else if(to == Running)
+    {
+      context.system.eventStream.publish(UserEvent(s"Instance Running ${instanceName}"))
+    }
+    else if (to == Active)
+    {
+      context.system.eventStream.publish(UserEvent(s"Instance Active ${instanceName}"))
+    }
+  }
+
+  onTransition(startingHandler _)
+  def startingHandler(from: InstanceMonitor.State, to: InstanceMonitor.State) =
+  {
+    if (to == Starting)
+    {
       /* Start the instance */
-      vim ! VimProtocol.StartMachine(i, i.name + "-" + instanceId)
+      vim ! VimProtocol.StartMachine(i, instanceName)
+      // special "starting" (i.e. VIM thinking about it) state? Doesn't seem
+      // necessary.
     }
-    case _ -> Running =>
+  }
+
+  onTransition(livenessHandler _)
+  def livenessHandler(from: InstanceMonitor.State, to: InstanceMonitor.State) =
+  {
+    if (to == Active)
     {
-      context.system.eventStream.publish(UserEvent(s"Instance Running ${i.name}"))
+      context.parent ! Liveness(true)
     }
-    case _ -> Active =>
+    if (from == Active)
     {
-      context.system.eventStream.publish(UserEvent(s"Instance Active ${i.name}"))
+      context.parent ! Liveness(false)
     }
   }
 

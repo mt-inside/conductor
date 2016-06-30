@@ -1,31 +1,36 @@
 digraph instance
 {
-    NotRunning
-    // How know? Health checks tell us about it being active but not just
-    // existing. I think: VIM is async, messages when creation has been
-    // confirmed. After that, it doens't matter. If health tests fail it doesnt
+    /* On quarentine: not a first-class thing with a state. An instanceMonitor
+   * represents a moral part of the service - part of the target of the parent.
+   * Don't keep one of these hanging around for a quanerntine, finished, error,
+   * whatever. Quarentine is a flag, meaning don't delete the instance on error.
+   * Proabably track it by renaming it in the VIM so it can be found, raising a
+   * user event with details, and maybe even storing instance details in a list
+   * in this actor. */
+
+    Starting // Waiting for VIM driver to start instance
+    // After that, it doens't matter. If health tests fail it doesnt
     // matter if it's an app-level thing or a vaporised VM, response is the
     // same.
-    Running //Not in service discovery.
-    Active
-    Maintanence //No autoscale. Isn't this a cluster property? Do we want to expose / address clusers? (path will be peri/1/ssc/1. ssc is cluster). This is OK - the Instance(file) causes the *cluster* not the instance(actor), so it's an op in instance.
-    Quiescent //Not in service discovery
-    Quarentine
-    // plus error?
-    Terminated
+    Running // VIM driver messages to say that creation is confirmed (conspires with its backend)
+    Active // All health checks passing
+    Maintanence // No autoscale. Isn't this a cluster property (there's no cluster model but actually the user path to an instance is foo[0], if they address foo they'll hit the cluster? Cluster needs to know, but so do instances so that a) it can be exposed e.g. to their agent, and b) they know to ignore liveness checks etc)? Do we want to expose / address clusers? (path will be peri/1/ssc/1. ssc is cluster). This is OK - the Instance(file) causes the *cluster* not the instance(actor), so it's an op in instance.
+    // How know? Think "quesce/stop/busy checks" - vm allowed to go from
+    // quiescing to stopping when they start failing. Absense of any such checks
+    // means no quiece time
+    Quiescing // Not in service discovery. Instance property, not cluster (quesce individual instances on scale down)
+    Stopping // Actually waiting for VIM driver to kill the instance, mirror of Starting
 
-    NotRequested -> NotRunning
-    NotRunning -> Running
-    //NotRunning -> Active - if all the checks pass then either its alive and the vim is mis-communicating, or they're someone else's tests
-    Running -> Active
-    Running -> Quarentine // Didn't go active in time, quarentine
-    Running -> NotRunning // Didn't go active in time, no quarentine
-    Active -> Maintanence
-    Active -> NotRunning // Replace
-    Active -> Running // Restart-in-place
-    Active -> Quarentine // Died, Quarentine
-    Maintanence -> Active
-    Active -> Quiescent
-    Quiescent -> Terminated
-    Active -> Terminated
+    NotRequested -> Starting // because no event when entering the initial state
+    Starting -> Running // VIM driver confirms
+    //Starting -> Active - Can't happen
+    Running -> Active // Liveness checks start passing
+    Running -> Starting // Didn't go active in time
+    Active -> Maintanence // User-initiated
+    Active -> Starting // Checks failed, replace set
+    Active -> Running // Checks failes, restart-in-place set. Doesn't mean we somehow know that the service is dead but the OS is alive. When the checks fail the response is always the same: recover, be that replace or restart
+    Maintanence -> Active // User-initiated
+    Active -> Quiescing // User-initiated
+    Quiescing -> Stopping // How know? Quesce checks?
+    Active -> Stopping // Sent Stop by parent, because scale-down or it's stopping wholesale, etc
 }

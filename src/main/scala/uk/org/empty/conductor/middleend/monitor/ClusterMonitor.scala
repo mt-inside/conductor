@@ -6,10 +6,10 @@ import scala.concurrent.duration._
 import uk.org.empty.conductor.frontend.model._
 import uk.org.empty.conductor.frontend.event.UserEvent
 
-object Cluster
+object ClusterMonitor
 {
   /* Props */
-  def props(d: Definition) = Props(classOf[Cluster], d)
+  def props(d: Definition) = Props(classOf[ClusterMonitor], d)
 
   /* Received and Sent events */
   // MonitorProtocol._
@@ -18,6 +18,7 @@ object Cluster
   sealed trait State
   case object Inactive extends State
   case object Active extends State
+  case object Stopping extends State
 
   /* Data */
   sealed trait Data
@@ -31,9 +32,9 @@ object Cluster
   ) extends Data
 }
 
-class Cluster(d: Definition) extends LoggingFSM[Cluster.State, Cluster.Data]
+class ClusterMonitor(d: Definition) extends LoggingFSM[ClusterMonitor.State, ClusterMonitor.Data]
 {
-  import Cluster._
+  import ClusterMonitor._
   import MonitorProtocol._
 
   /* Not sure livenesses and targets should be pre-populated.
@@ -113,9 +114,24 @@ class Cluster(d: Definition) extends LoggingFSM[Cluster.State, Cluster.Data]
         stay using newState
     }
   }
+  
+  when(Stopping)
+  {
+    case Event(Terminated(child), s: Children) =>
+    {
+
+    }
+  }
 
   whenUnhandled
   {
+    case Event(Stop, s: Children) =>
+    {
+      s.checks.values.foreach{ c => context.watch(c); c ! Stop }
+      stop other children?
+      goto(Stopping) // Above is a graceful stop message so we don't just declare ourself Inactive yet, but wait for that to propage up from the instances.
+    }
+
     // TODO: This being here shows it should be in its own target-aggregator actor (see evernote)?
     case Event(ScaleTarget(target), s: Children) =>
     {
@@ -164,13 +180,13 @@ class Cluster(d: Definition) extends LoggingFSM[Cluster.State, Cluster.Data]
 
   onTransition
   {
-    /* Only matches the first one? */
-    case Inactive -> Active =>
+    /* Only matches the first one */
+    case _ -> Active =>
     {
       context.system.eventStream.publish(UserEvent(s"Cluster Active ${d.name}"))
       context.parent ! Liveness(true)
     }
-    case Active -> Inactive =>
+    case _ -> Inactive =>
     {
       context.system.eventStream.publish(UserEvent(s"Cluster Inactive ${d.name}"))
       context.parent ! Liveness(false)

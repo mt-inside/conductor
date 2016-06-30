@@ -21,7 +21,7 @@ object VimProtocol
   /* Messages sent */
   /* These don't need a machine id because they're returned to sender */
   final case class MachineStarted(id: String)
-  final case object MachineStopped
+  final case class MachineStopped(id: String)
   final case class AddressAllowed(addr: String)
   final case class AddressDisallowed(addr: String)
   final case class VolumeAttached(vol: String)

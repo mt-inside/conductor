@@ -1,0 +1,5 @@
+{
+    "name": "my_simple_vnf",
+    "definition": "front_end",
+    "perInstanceData": { "/web_service/front_end/1": { "ip4": "10.1.1.1" } }
+}

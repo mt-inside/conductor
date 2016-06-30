@@ -1,0 +1,28 @@
+{
+    "data_dir": "/opt/consul",
+    "log_level": "DEBUG",
+    "server": false,
+    "start_join": [ "consul" ],
+    "services": [
+        {
+            "id": "sample_service",
+            "name": "sample-service",
+            "port": 8080
+        }
+    ],
+    "checks": [
+        {
+            "id": "basic_node_check",
+            "name": "basic_node",
+            "script": "/opt/consul/bin/basic_node",
+            "interval": "5s"
+        },
+        {
+            "id": "service_process_check",
+            "name": "service_process",
+            "service_id": "sample_service",
+            "script": "/opt/consul/bin/service_process",
+            "interval": "5s"
+        }
+    ]
+}

@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 import uk.org.empty.conductor.frontend.controller.CrudMessages
 import uk.org.empty.conductor.frontend.data.GenStore
 import uk.org.empty.conductor.frontend.model.{Deployment, Definition}
-import uk.org.empty.conductor.middleend.monitor.Cluster
+import uk.org.empty.conductor.middleend.monitor.ClusterMonitor
 
 /* TODO:
  * - will surely get Liveness and Target messages from child clusters as they
@@ -52,7 +52,7 @@ class Deployer extends Actor with ActorLogging
 
       (defS ? CrudMessages.Show(d.definition))
         .mapTo[CrudMessages.Details[Definition]]
-        .map { d => context.actorOf(Cluster.props(d.obj), s"cluster-${d.obj.name}") }
+        .map { d => context.actorOf(ClusterMonitor.props(d.obj), s"cluster-${d.obj.name}") }
         .recover { case ex => log.warning(s"Can't deploy $d") }
     }
 
