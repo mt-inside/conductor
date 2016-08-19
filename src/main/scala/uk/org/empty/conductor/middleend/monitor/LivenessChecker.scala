@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2015-2016 Matthew Turner.
+ *
+ * All rights reserved.
+ */
 /* TODO:
  * multiple subclasses of this.
  * Liveness check "name" should become a URI

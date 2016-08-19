@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2015-2016 Matthew Turner.
+ *
+ * All rights reserved.
+ */
 package uk.org.empty.conductor.frontend.event
 
 import akka.actor.{ Actor, Props }
